@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(mkdir -p ~/.claude/skills/issue-select)",
+      "Bash(cp -r /c/Users/osmar/gits/ai301-coursework/tools/issue-select/skill/. ~/.claude/skills/issue-select/)",
+      "Bash(cp /c/Users/osmar/gits/ai301-coursework/tools/issue-select/skill/scope.md ~/.claude/skills/issue-select/scope.md)",
+      "Bash(curl -s \"https://api.github.com/repos/codepath/pathreview-ai301-fa26-s3/issues?state=open&per_page=100\" -H \"Accept: application/vnd.github+json\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\osmar\\.claude\\skills\\issue-select"
+    ]
+  }
+}
