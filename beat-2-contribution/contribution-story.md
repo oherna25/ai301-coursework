@@ -80,7 +80,7 @@ drafted, what you did with the draft.]
 
 I searched GitHub with queries built from my fit profile: I know Python, I want to understand it better, I want to rely less on AI when looking for bugs, and I want to avoid anything too high-tech. The scout ranked the candidates by fit. test-infra#5543 came out on top: the task is stated plainly (make Mergebot ignore an approval once a new review has been requested from that reviewer), it is Python logic I can test, there is no assignee and no open PR, and the last claim was on 2026-07-13, more than 30 days ago. Its verdict was not a reject, so I did not choose against my tool. The other candidates lost: executorch#9500 is C++ and already has an open PR (#21875) from someone else, and executorch#10580 needs a Qualcomm Android device, which conflicts with avoiding high-tech work. What I hope to learn is how a real bot reads GitHub's review data and how to change it safely.
 
-After claiming, I checked the code and found the logic lives in pytorch/pytorch, so my claim comment asks the maintainer to confirm the target repo. It also notes that another student (`vineetagarwal54`) asked for the issue earlier and got no reply, and offers to coordinate. My read of the tool: the ranking held up, but it grades the issue page and not the codebase, so it missed the wrong-repo problem until I read the code. I would add a rubric check that the code the issue describes exists in the repo the issue is filed in.
+After claiming, I checked the code and found the logic lives in pytorch/pytorch, so my claim comment asks the maintainer to confirm the target repo. It also notes that another student (`vineetagarwal54`) asked for the issue earlier and got no reply, and offers to coordinate. My read of the tool: the ranking held up, but it grades the issue page and not the codebase, so it missed the wrong-repo problem until I read the code. I added that rubric check (see `tools/issue-select/rubric.md` and the dated entry in `tools/issue-select/scan-notes.md`): a required "Code lives in this repo" check that searches the issue's own repo for the symbols the issue names and fails if they only exist in a sibling repo. Under it, #5543 would have failed.
 
 **Claim comment:** https://github.com/pytorch/test-infra/issues/5543#issuecomment-6714556478
 
@@ -89,7 +89,7 @@ After claiming, I checked the code and found the logic lives in pytorch/pytorch,
 - Tool: issue-scout, with my own search strategy (queries traced to my fit profile) and rubric. I ran the scan and read the ranked list against the issue threads.
 - What it produced: a ranked list that put test-infra#5543 first, with executorch#9500 and #10580 passed over for stated reasons.
 - Difficulties: it never checks where the described code lives, so it could not catch that the fix belongs in pytorch/pytorch. It also did not surface the second claimant until I read the thread.
-- What changed: I posted a claim that asks about the target repo and offers to coordinate. I would add a "code lives in this repo" check to the rubric.
+- What changed: I posted a claim that asks about the target repo and offers to coordinate. I added a required "Code lives in this repo" check to the rubric.
 
 ---
 
