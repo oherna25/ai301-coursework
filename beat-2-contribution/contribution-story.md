@@ -142,10 +142,10 @@ Challenges: pytest isn't installed, so I ran the tests with `python -m unittest`
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code with `gh` and Python, running the unmodified `trymerge.py` on real PR data.
+- What it produced: A script showing `get_approved_by()` returning `['ezyang']` for pytorch/pytorch#132216 while ezyang had a pending re-request.
+- Difficulties: Recorded GraphQL tests hit a local rate limit, so I fed REST review data into `GitHubPR._reviews` instead of running the full suite.
+- What changed: I used the real data of the PR named in the issue as the reproduction, not a made-up case.
 
 ---
 
@@ -185,32 +185,33 @@ Deviation: my claim comment proposed adding `reviewRequests` to `GH_GET_PR_INFO_
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code writing `unittest` tests, run with `python -m unittest`.
+- What it produced: 5 tests; before the change 1 fails, after it all 5 pass, and with `TestAuthorizedWithoutGreenlight` 18 pass.
+- Difficulties: pytest and lint tools are not installed locally and the full `test_trymerge.py` could not be run, so I could not show a full-suite or lint result.
+- What changed: The PR states what was not run and relies on CI for it.
 
 ---
 
 ## Implementation Notes
 
-[A running log, added to as you work. Date each entry. What you
-built, decisions you made when you made them, wrong turns included.]
+**2026-11-07**
 
-**[Date]**
+Ran the scout and picked test-infra#5543. Read the thread: GitHub keeps an old approval on a re-request, so the fix has to be built in the bot. Forked and cloned test-infra, then found the approval logic isn't there; it is `get_approved_by()` in pytorch/pytorch `trymerge.py`. Posted my claim comment with the plan and two questions (target repo, fixture churn).
 
-[Entry]
+**2026-11-07**
 
-**[Date]**
+Reproduced the bug by running the unmodified `trymerge.py` on the real data of pytorch/pytorch#132216: `get_approved_by()` returned `['ezyang']` while ezyang was re-requested. Wrote a first fix, then reverted it when told to only reproduce. Re-applied it later, changing the plan from GraphQL to REST so the recorded fixtures stay valid. Wrong turn: the first test run errored until I added the GraphQL mock.
 
-[Entry]
+**2026-11-07**
+
+Committed `b8a8425` and pushed it to my fork. The PR was opened as #203945 and I rewrote its body with the testing evidence and AI disclosure. Wrote down the risk that it is auto-closed without an `actionable` issue or a backing maintainer.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code and git, working in a sparse checkout of my fork.
+- What it produced: Branch `fix/trymerge-ignore-approval-on-re-request`, commit `b8a8425`.
+- Difficulties: The first test run errored because the tests needed the same GraphQL mock as other classes; the sandbox also denied the first fork command.
+- What changed: Added the class-level mock; I forked the repo myself.
 
 ---
 
@@ -228,10 +229,10 @@ built, decisions you made when you made them, wrong turns included.]
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: `gh` and the GitHub PR template; Claude Code drafted the body from my reproduction and test evidence.
+- What it produced: PR #203945 with a filled template and real before/after test output.
+- Difficulties: The PR was opened with the template still unfilled and not as a draft; pytorch/pytorch auto-closes PRs without an `actionable` issue or a backing maintainer, and neither exists yet.
+- What changed: I rewrote the body with `gh pr edit`. I still need to write the Summary myself, because the template says human written only.
 
 ---
 
@@ -239,25 +240,20 @@ built, decisions you made when you made them, wrong turns included.]
 
 **Technical Skills Gained**
 
-[What you learned technically, named concretely.]
+Reading a real bot's review logic (`_get_reviews()` keeps the latest non-COMMENTED review per login) and how GitHub's GraphQL `reviewDecision` differs from its REST reviews; using a sparse checkout to work in a huge repo; mocking network calls in `unittest`; and that a recorded-fixture test suite is tied to the exact text of its GraphQL query.
 
 **Challenges Overcome**
 
-[What was hard and how you solved it; point at the real events, the
-Toolkit blocks above are full of them.]
+The code lived in a different repo than the issue, which I only found by searching the code; the test environment had no pytest and rate-limited GraphQL, so I mocked the network and ran `unittest`; and the PR template's rules (an `actionable` issue or backing maintainer, a human-written summary) mean the PR may be closed regardless of the code.
 
 **What I'd Do Differently Next Time**
 
-[Reflection on your process.]
+Check the target repo, the PR template and the AI policy before writing code, not after. I would read the contribution rules first and ask the maintainer to confirm the repo and approach, then build, so the PR opens ready for triage instead of unfilled.
 
 ---
 
 ## Resources Used
 
-[What actually helped, not a reading list. List things this story
-already shows you using: the doc you followed to set the environment
-up, the thread that explained the bug, the person who answered you.
-One real entry beats ten plausible ones.]
-
-- [Link to documentation that helped]
-- [Discussion, issue, or post that helped]
+- The issue thread, where ZainRizvi explained GitHub's by-design behavior: https://github.com/pytorch/test-infra/issues/5543
+- pytorch/pytorch CONTRIBUTING.md (PR lifecycle and pre-conditions) and the PR template, which set the bar for the description
+- pytorch/pytorch#132216, the real PR whose data reproduced the bug
