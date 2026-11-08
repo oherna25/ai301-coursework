@@ -223,9 +223,10 @@ Committed `b8a8425` and pushed it to my fork. The PR was opened as #203945 and I
 
 **Maintainer Feedback:**
 
-- 2026-11-07: none yet. The issue thread has no maintainer reply to my claim comment.
+- 2026-11-08: no human review or maintainer reply yet, on the PR or on the issue thread. The EasyCLA bot first showed "CLA not signed"; I signed it and it now shows "CLA Signed".
+- 2026-11-08: I converted the PR to a draft, as the template asks, and wrote the Summary myself. Checks so far: 4 succeeded, 6 skipped, none failing; I have not read the individual jobs.
 
-**Status:** Awaiting review. Risk: pytorch/pytorch auto-closes PRs without an `actionable` issue or a backing maintainer, and neither exists yet.
+**Status:** Awaiting review (draft). Risk: pytorch/pytorch auto-closes PRs without an `actionable` issue or a backing maintainer, and neither exists yet.
 
 **Toolkit**
 
