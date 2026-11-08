@@ -11,7 +11,7 @@ files and no evidence uploads are part of Assignment 5.
 **Student:** osmar hernandez
 **GitHub Username:** oherna25
 **Issue:** https://github.com/pytorch/test-infra/issues/5543
-**Pull Request:** [GitHub PR link, once opened
+**Pull Request:** https://github.com/pytorch/pytorch/pull/203945
 
 One repository, built across units 5 to 8, telling the whole story of your real
 contribution. Fill it as you work, not at the end — the sections below ask for evidence that
@@ -97,26 +97,26 @@ After claiming, I checked the code and found the logic lives in pytorch/pytorch,
 
 **Problem Description**
 
-[In your own words, what is broken or missing?]
+Mergebot (the bot that merges pytorch PRs) still counts a reviewer's approval after someone asks that reviewer to review again. GitHub does not dismiss the old approval on a re-request, so a PR can look approved when its reviewers have not actually signed off on the latest state.
 
 **Expected Behavior**
 
-[What should happen?]
+Once a reviewer has a pending review request, Mergebot should stop counting their earlier approval until they approve again.
 
 **Current Behavior**
 
-[What actually happens?]
+`get_approved_by()` returns every reviewer whose latest non-COMMENTED review is APPROVED, including reviewers who are also in the PR's pending requested reviewers. On pytorch/pytorch#132216 it returned `['ezyang']` while ezyang was re-requested.
 
 **Affected Components**
 
-[Which parts of the codebase are involved?]
+`PR.get_approved_by()` and `PR._get_reviews()` in `.github/scripts/trymerge.py` in pytorch/pytorch, and the tests in `.github/scripts/test_trymerge.py`. The issue is filed in pytorch/test-infra, which holds no Mergebot approval logic.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code with `gh`, reading the issue thread and `trymerge.py`.
+- What it produced: the finding that the approval logic is in pytorch/pytorch and that `_get_reviews()` never looks at pending requests.
+- Difficulties: the issue gives no hint about which repo holds the code; I only found it by searching the code.
+- What changed: I asked the maintainer in my claim comment to confirm the target repo instead of coding in test-infra.
 
 ---
 
@@ -124,24 +124,21 @@ After claiming, I checked the code and found the logic lives in pytorch/pytorch,
 
 **Environment Setup**
 
-[What a stranger would need to stand this up: your operating system,
-the relevant versions (language, runtime, package manager, the project
-itself), and how you set the project up. Then the challenges you faced
-and how you solved them, or that none came up.]
+Windows 11 Pro, Python 3.14.3, PyYAML 6.0.3 and requests 2.32.5, `gh` CLI logged in as oherna25. The code is `.github/scripts/trymerge.py` in pytorch/pytorch, at `main` commit `42ce6b4`. I forked pytorch/pytorch and made a sparse checkout of the fork (`git clone --filter=blob:none --no-checkout --depth 1`, then `git sparse-checkout set .github/scripts`), because the full repo is huge and only the scripts are needed.
+
+Challenges: pytest isn't installed, so I ran the tests with `python -m unittest`. The recorded-GraphQL tests hit a "Rate limit exceeded" error when run locally, so the full `test_trymerge.py` gave no usable baseline. I worked around it by feeding real review data from the REST API directly into `GitHubPR._reviews`.
 
 **Steps to Reproduce**
 
-1. [Step 1]
-2. [Step 2]
-3. [Observed result]
+1. Fetch the real data of pytorch/pytorch#132216, the PR from the issue thread: `gh api repos/pytorch/pytorch/pulls/132216/reviews` and `.../requested_reviewers`.
+2. In `.github/scripts` on unmodified `main`, build `GitHubPR("pytorch", "pytorch", 132216)` and set `pr._reviews` from the REST reviews.
+3. Call `pr.get_approved_by()`. Observed: it returns `['ezyang']`, even though `ezyang` is in the PR's pending requested reviewers (ezyang, jansel, gujinghui, EikanWang). The approval is counted for a re-requested reviewer.
 
 **Reproduction Evidence**
 
-- **Commit showing reproduction:** [link to commit in your fork]
-- **Screenshots/logs:** [if applicable]
-- **My findings:** [what you discovered during reproduction; an
-  honest, evidenced cannot-reproduce that led you to re-pick or ask
-  the maintainer belongs here and costs you nothing]
+- **Commit showing reproduction:** none. The reproduction was a throwaway script run against unmodified `main` (`42ce6b4`), so there is no commit for it. The fix commit is https://github.com/oherna25/pytorch/commit/b8a8425.
+- **Screenshots/logs:** script output: `pending review requests: ['ezyang', 'jansel', 'gujinghui', 'EikanWang']`, `Mergebot get_approved_by(): ['ezyang']`, `ezyang approval counted although re-requested: True`.
+- **My findings:** the bug reproduces. GitHub itself reports `reviewDecision: APPROVED` for that PR while the re-requests are pending, matching ZainRizvi's comment that GitHub keeps the old approval by design. I also found that the logic lives in pytorch/pytorch, not test-infra where the issue is filed.
 
 **Toolkit**
 
@@ -156,38 +153,35 @@ and how you solved them, or that none came up.]
 
 **Analysis**
 
-[Your analysis of the root cause: what is causing the issue, traced
-to the files and functions involved.]
+`_get_reviews()` in `trymerge.py` keeps each login's latest non-COMMENTED review, and `get_approved_by()` returns every login whose latest review is APPROVED. Neither reads the PR's pending review requests, and GitHub keeps the old APPROVED review on a re-request, so a re-requested reviewer's approval is still counted.
 
 **Proposed Solution**
 
-[High-level description of your fix approach, and what you are
-deliberately NOT changing.]
+Make `get_approved_by()` drop approvals from logins that have a pending review request, read from the REST `requested_reviewers` endpoint. If GitHub cannot be asked, return the old result so a transient failure does not block merges. Not changing: merge rules, `get_changes_requested_by()`, how reviews are fetched, and `GH_GET_PR_INFO_QUERY`.
 
 **Implementation Plan**
 
-1. [Modify file X to do Y]
-2. [Add or change Z]
-3. [Update tests]
+1. Modify `.github/scripts/trymerge.py`: add `GitHubPR.get_requested_reviewers()` (cached, lowercased logins, empty on failure) and filter `get_approved_by()` with it.
+2. Add `TestReRequestedReviewApproval` (5 tests) in `.github/scripts/test_trymerge.py`.
+3. Open the PR from the fork branch against pytorch/pytorch.
 
-[Record deviations here as they happen: what changed mid-build and
-why. A recorded deviation is honest work; silent drift is not.]
+Deviation: my claim comment proposed adding `reviewRequests` to `GH_GET_PR_INFO_QUERY`. I built it over REST instead, because the query's text is the cache key for the recorded GraphQL fixtures in `test_trymerge.py`, so changing it would invalidate all of them. The PR description says so.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code, used to draft the patch and tests; I reviewed the diff.
+- What it produced: the `get_requested_reviewers()` change and 5 unit tests (commit `b8a8425`).
+- Difficulties: the first version of the tests errored because `GitHubPR(...)` calls GraphQL, which hit a rate limit; I added the same `gh_graphql` mock the other test classes use.
+- What changed: the REST approach replaced the GraphQL one from my claim comment, and the tests were fixed to mock GraphQL.
 
 ---
 
 ## Testing Strategy
 
-[What observable checks prove the fix: your reproduction steps re-run
-against the built change (before and after), and the repo's own test
-suite or checks with the outcome shown. "Tests pass" with nothing
-observable named is not a strategy.]
+- Before the change: `python -m unittest test_trymerge.TestReRequestedReviewApproval` from `.github/scripts`. `test_approval_is_dropped_when_reviewer_is_re_requested` fails (1 failure of 5).
+- After the change: the same command prints `Ran 5 tests ... OK`. Together with the existing `TestAuthorizedWithoutGreenlight` class: `Ran 18 tests ... OK`.
+- Reproduction re-run: the 5 tests cover approve with no request (counted), approve then re-request (dropped, case-insensitive), request cleared (counted again), GitHub failure (old behavior), and no approvals (no request made).
+- Not run: the full `test_trymerge.py` (local GraphQL rate limit) and lint (`spin fixlint`). The PR says so and relies on CI for both.
 
 **Toolkit**
 
@@ -222,20 +216,15 @@ built, decisions you made when you made them, wrong turns included.]
 
 ## Pull Request
 
-**PR Link:** [GitHub PR URL when opened]
+**PR Link:** https://github.com/pytorch/pytorch/pull/203945
 
-**PR Description:** [what the PR says; much of the content above
-adapts into it]
+**PR Description:** Links the issue (`Fixes https://github.com/pytorch/test-infra/issues/5543`) and my claim comment, and says there is no maintainer "Supported by" handle yet. It states BC-breaking: No, lists the 5 tests with the before/after output, states what I did not run (full suite, lint) and what is not changed, and discloses the AI assistance (Claude Code). The Summary section is left for me to write, since the template says human written only.
 
 **Maintainer Feedback:**
 
-- [Date]: [feedback received, or "none yet"; silence is a normal
-  state and costs you nothing]
-- [Date]: [how you addressed it]
+- 2026-11-07: none yet. The issue thread has no maintainer reply to my claim comment.
 
-**Status:** [Awaiting review / Iterating / Merged / Closed. The
-status is a fact you record, never a grade: the PR is graded as
-opened.]
+**Status:** Awaiting review. Risk: pytorch/pytorch auto-closes PRs without an `actionable` issue or a backing maintainer, and neither exists yet.
 
 **Toolkit**
 
