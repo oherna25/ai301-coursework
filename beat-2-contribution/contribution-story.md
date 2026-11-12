@@ -120,7 +120,7 @@ Once a reviewer has a pending review request, Mergebot should stop counting thei
 
 ## Reproduction Process
 
-**Environment Setup**
+*Environment Setup**
 
 Windows 11 Pro, Python 3.14.3, PyYAML 6.0.3 and requests 2.32.5, `gh` CLI logged in as oherna25. The code is `.github/scripts/trymerge.py` in pytorch/pytorch, at `main` commit `42ce6b4`. I forked pytorch/pytorch and made a sparse checkout of the fork (`git clone --filter=blob:none --no-checkout --depth 1`, then `git sparse-checkout set .github/scripts`), because the full repo is huge and only the scripts are needed.
 
@@ -128,9 +128,33 @@ Challenges: pytest isn't installed, so I ran the tests with `python -m unittest`
 
 **Steps to Reproduce**
 
-1. Fetch the real data of pytorch/pytorch#132216, the PR from the issue thread: `gh api repos/pytorch/pytorch/pulls/132216/reviews` and `.../requested_reviewers`.
-2. In `.github/scripts` on unmodified `main`, build `GitHubPR("pytorch", "pytorch", 132216)` and set `pr._reviews` from the REST reviews.
-3. Call `pr.get_approved_by()`. Observed: it returns `['ezyang']`, even though `ezyang` is in the PR's pending requested reviewers (ezyang, jansel, gujinghui, EikanWang). The approval is counted for a re-requested reviewer.
+1. In the sparse checkout, check out unmodified `main`: `git checkout 42ce6b4`, then `cd .github/scripts`.
+2. Save the script below as `repro_5543.py` in that directory. It stubs `gh_get_pr_info` (so the `GitHubPR` constructor makes no GraphQL call), then sets `pr._reviews` to the PR's REST reviews as `(login, state)` tuples, oldest to newest, which is the shape `_get_reviews()` expects.
+3. Run `python repro_5543.py` (needs `gh` logged in). Observed: `get_approved_by()` returns `['ezyang']`, even though `ezyang` is in the PR's pending requested reviewers (ezyang, jansel, gujinghui, EikanWang). The approval is counted for a re-requested reviewer.
+
+```python
+import json, subprocess
+from unittest import mock
+
+import trymerge
+
+def gh(path):
+    return json.loads(subprocess.check_output(["gh", "api", path]))
+
+PR = 132216  # the PR from the issue thread
+reviews = gh(f"repos/pytorch/pytorch/pulls/{PR}/reviews")
+requested = [u["login"] for u in gh(f"repos/pytorch/pytorch/pulls/{PR}/requested_reviewers")["users"]]
+
+# Skip the GraphQL call in GitHubPR.__init__ (rate-limited locally).
+with mock.patch.object(trymerge, "gh_get_pr_info", return_value={}):
+    pr = trymerge.GitHubPR("pytorch", "pytorch", PR)
+pr._reviews = [(r["user"]["login"], r["state"]) for r in reviews]
+
+approved = pr.get_approved_by()
+print("pending review requests:", requested)
+print("Mergebot get_approved_by():", approved)
+print("approval counted although re-requested:", any(a in requested for a in approved))
+```
 
 **Reproduction Evidence**
 
