@@ -58,11 +58,9 @@ one in the week it belongs to.
 
 I wrote a search strategy from my fit profile (Python, less AI, nothing too high-tech) and ran the scout over GitHub, then ranked candidates against the rubric. It ranked test-infra#5543 (Mergebot counts an approval after the reviewer is re-requested) as the best fit and passed on executorch#9500 and #10580. What fell short: the scout can't tell where the code behind an issue lives. Reading the code showed Mergebot's approval logic is in pytorch/pytorch `trymerge.py`, not test-infra, which the scout's own note had told me to confirm. I also found a second claimant on the issue, so I posted my claim with the proposed approach and a question about the target repo instead of coding first.
 
-**Unit 6: [one line on the tool work]**
+**Unit 6: Installed the voice guard and it stopped my first claim draft for test-infra#5543**
 
-[2-4 sentences: the voice-guard, the repo-memory file. What broke or
-fell short, and what changed because of it. "Nothing broke" counts when
-it is true - say how you know.]
+I installed the voice guard (a Claude Code hook that runs `check_voice.py` against my one voice guide) and wrote upstream rules for claims, questions and pings. Its log shows the wiring test stopping `gh issue comment --help` as intended, then stopping my first claim comment for breaking my rule "Claim with a first step and an honest timeframe"; I revised the draft and it passed a minute later, before the claim went up. What fell short: the guard only checks commands it can parse, so a browser post or a raw `gh api` call walks around it. I have not yet created the repo-memory file (`CLAUDE.local.md`) in my pytorch clone, so I can't say what it changed.
 
 **Unit 7: [one line on the tool work]**
 
